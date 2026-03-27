@@ -7,7 +7,6 @@ const TAB_ICONS: Record<Tab, string> = {
   voice: "🎤",
   alerts: "🆘",
   diet: "🥗",
-  dashboard: "📋",
   tools: "🛠️",
   hospitals: "🏥",
 };
@@ -18,7 +17,6 @@ const TAB_KEYS: Tab[] = [
   "voice",
   "alerts",
   "diet",
-  "dashboard",
   "tools",
   "hospitals",
 ];
@@ -28,7 +26,6 @@ const LANG_KEYS: (keyof ReturnType<typeof useLang>["t"])[] = [
   "voice",
   "alerts",
   "diet",
-  "dashboard",
   "tools",
   "hospitals",
 ];

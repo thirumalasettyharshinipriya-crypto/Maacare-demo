@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import RiskBadge from "../components/RiskBadge";
 import { store } from "../store";
 import type { Language, SymptomLog } from "../types";
-import { analyzeRisk } from "../utils/riskEngine";
+// Removed local riskEngine import
 
 const langMap: Record<Language, string> = {
   en: "en-US",
@@ -21,13 +21,17 @@ export default function VoicePage() {
   const [lang, setLang] = useState<Language>("te");
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [risk, setRisk] = useState<ReturnType<typeof analyzeRisk> | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [reply, setReply] = useState<string | null>(null);
+  const [riskDetected, setRiskDetected] = useState(false);
+  const [loading, setLoading] = useState(false);
   const w = window as unknown as Record<string, unknown>;
   const [supported] = useState(
     () => !!(w.SpeechRecognition || w.webkitSpeechRecognition),
   );
   const recRef = useRef<AnySpeechRecognition>(null);
+
+  // For demonstration, hardcode a mock patient ID
+  const MOCK_PATIENT_ID = "000000000000000000000000";
 
   function startListening() {
     const SR = (w.SpeechRecognition ||
@@ -42,12 +46,14 @@ export default function VoicePage() {
         .join(" ");
       setTranscript(t);
     };
-    rec.onend = () => setListening(false);
+    rec.onend = () => {
+      setListening(false);
+    };
     rec.start();
     recRef.current = rec;
     setListening(true);
-    setRisk(null);
-    setSaved(false);
+    setReply(null);
+    setRiskDetected(false);
   }
 
   function stopListening() {
@@ -55,37 +61,46 @@ export default function VoicePage() {
     setListening(false);
   }
 
-  function analyze(text: string) {
-    const r = analyzeRisk(text);
-    setRisk(r);
-    speak(r);
+  async function analyze(text: string) {
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:5001/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: MOCK_PATIENT_ID,
+          message: text,
+          language: langLabel[lang]
+        }),
+      });
+      const data = await res.json();
+      setReply(data.reply);
+      setRiskDetected(data.riskDetected);
+      speak(data.reply);
+      
+      // Save log automatically
+      const log: SymptomLog = {
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        symptoms: [text.slice(0, 100)],
+        riskLevel: data.riskDetected ? "high" : "low",
+        aiSuggestion: data.reply,
+        voiceInputUsed: true,
+        language: lang,
+      };
+      store.addSymptom(log);
+    } catch (err) {
+      console.error(err);
+      setReply("Error reaching the assistant. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function speak(r: ReturnType<typeof analyzeRisk>) {
-    const msg =
-      lang === "hi"
-        ? r.hindiSuggestion
-        : lang === "te"
-          ? r.teluguSuggestion
-          : r.suggestion;
+  function speak(msg: string) {
     const utt = new SpeechSynthesisUtterance(msg);
     utt.lang = langMap[lang];
     window.speechSynthesis.speak(utt);
-  }
-
-  function saveLog() {
-    if (!risk || !transcript) return;
-    const log: SymptomLog = {
-      id: Date.now().toString(),
-      timestamp: new Date().toISOString(),
-      symptoms: [transcript.slice(0, 100)],
-      riskLevel: risk.riskLevel,
-      aiSuggestion: risk.suggestion,
-      voiceInputUsed: true,
-      language: lang,
-    };
-    store.addSymptom(log);
-    setSaved(true);
   }
 
   const tapLabel =
@@ -104,24 +119,12 @@ export default function VoicePage() {
         ? "आवाज़ यहाँ दिखेगी... या टाइप करें"
         : "Voice will appear here... or type manually";
   const analyzeLabel =
-    lang === "te" ? "విశ్లేషించండి →" : lang === "hi" ? "विश्लेषण करें →" : "Analyze →";
-  const disclaimerLabel =
-    lang === "te"
-      ? "ఇది డాక్టర్‌కు ప్రత్యామ్నాయం కాదు."
-      : lang === "hi"
-        ? "यह डॉक्टर का विकल्प नहीं है।"
-        : "This is not a replacement for a doctor.";
-  const speakAgainLabel =
-    lang === "te" ? "మళ్ళీ చదవండి" : lang === "hi" ? "फिर सुनें" : "Speak Again";
-  const saveLabel =
-    lang === "te" ? "లాగ్ సేవ్ చేయండి" : lang === "hi" ? "लॉग सेव करें" : "Save Log";
-  const savedLabel =
-    lang === "te" ? "సేవ్ అయింది!" : lang === "hi" ? "सेव हो गया!" : "Saved!";
+    lang === "te" ? "పంపండి →" : lang === "hi" ? "भेजें →" : "Send →";
 
   return (
     <div className="p-4 space-y-4">
       <h2 className="text-2xl font-bold text-rose-700">
-        🎤 Voice Input / आवाज़ इनपुट / వాయిస్ ఇన్‌పుట్
+        🎤 AI Assistant / एआई सहायक / AI సహాయకుడు
       </h2>
 
       <div className="flex gap-2">
@@ -129,7 +132,7 @@ export default function VoicePage() {
           <button
             type="button"
             key={l}
-            onClick={() => setLang(l)}
+            onClick={() => { setLang(l); setReply(null); setTranscript(""); }}
             className={`flex-1 py-3 rounded-xl font-bold text-sm border-2 ${
               lang === l
                 ? "bg-rose-500 text-white border-rose-500"
@@ -153,30 +156,40 @@ export default function VoicePage() {
       )}
 
       {supported && (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={listening ? stopListening : startListening}
-            className={`w-40 h-40 rounded-full font-bold text-white text-4xl shadow-xl flex flex-col items-center justify-center transition-all ${
-              listening
-                ? "bg-red-600 scale-110 animate-pulse"
-                : "bg-rose-500 hover:bg-rose-600"
-            }`}
-          >
-            {listening ? "⏹" : "🎤"}
-            <span className="text-xs mt-1">
-              {listening
-                ? lang === "te"
-                  ? "Stop"
-                  : "Stop"
-                : lang === "te"
-                  ? "Tap"
-                  : "Tap to Speak"}
-            </span>
-            <span className="text-[10px]">
-              {listening ? stopLabel : tapLabel}
-            </span>
-          </button>
+        <div className="flex flex-col items-center justify-center py-6">
+          <div className="relative">
+            {/* The pulsing ring when listening */}
+            {listening && (
+              <div className="absolute inset-0 rounded-full border-4 border-rose-400 animate-ping opacity-75"></div>
+            )}
+            <button
+              type="button"
+              onClick={listening ? stopListening : startListening}
+              className={`relative z-10 w-44 h-44 rounded-full overflow-hidden shadow-2xl transition-all border-4 ${
+                listening
+                  ? "border-rose-500 scale-105"
+                  : "border-white hover:border-rose-300"
+              }`}
+            >
+              <img 
+                src="/ai_nurse_avatar.webp" 
+                alt="AI Companion Avatar" 
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=300&h=300"; }}
+              />
+              <div className="absolute bottom-0 w-full bg-black/40 py-1 text-center backdrop-blur-sm">
+                <span className="text-white text-xs font-bold tracking-wide">
+                  {listening ? stopLabel : tapLabel}
+                </span>
+              </div>
+            </button>
+          </div>
+          
+          <p className="mt-4 text-center font-medium text-rose-700 max-w-[250px]">
+            {listening 
+              ? (lang === 'te' ? 'నేను వింటున్నాను...' : lang === 'hi' ? 'मैं सुन रही हूँ...' : 'I am listening...')
+              : (lang === 'te' ? 'మాట్లాడేందుకు నా పై నొక్కండి' : lang === 'hi' ? 'मुझसे बात करने के लिए टैप करें' : 'Tap on me to speak')}
+          </p>
         </div>
       )}
 
@@ -191,57 +204,46 @@ export default function VoicePage() {
           placeholder={placeholder}
           className="w-full border-2 border-rose-200 rounded-xl px-4 py-3 text-lg focus:border-rose-400 outline-none"
         />
-        {transcript && !risk && (
+        {transcript && !reply && (
           <button
             type="button"
             onClick={() => analyze(transcript)}
-            className="mt-2 w-full bg-rose-500 text-white font-bold py-3 rounded-xl"
+            disabled={loading}
+            className="mt-2 w-full bg-rose-500 text-white font-bold py-3 rounded-xl disabled:bg-rose-300"
           >
-            {analyzeLabel}
+            {loading ? "Thinking..." : analyzeLabel}
           </button>
         )}
       </div>
 
-      {risk && (
-        <div
-          className={`p-4 rounded-2xl border-2 space-y-2 ${
-            risk.riskLevel === "high"
-              ? "bg-red-50 border-red-400"
-              : risk.riskLevel === "medium"
-                ? "bg-yellow-50 border-yellow-400"
-                : "bg-green-50 border-green-400"
-          }`}
-        >
-          <RiskBadge level={risk.riskLevel} />
-          <p className="font-semibold text-gray-800">
-            {lang === "hi"
-              ? risk.hindiSuggestion
-              : lang === "te"
-                ? risk.teluguSuggestion
-                : risk.suggestion}
-          </p>
-          <p className="text-xs text-gray-500 italic">{disclaimerLabel}</p>
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => speak(risk)}
-              className="flex-1 bg-rose-100 text-rose-700 font-bold py-2 rounded-xl"
-            >
-              🔊 {speakAgainLabel}
-            </button>
-            {!saved ? (
+      {reply && (
+        <div className="flex gap-3 mb-6 animate-in slide-in-from-bottom-5">
+           <img 
+              src="/ai_nurse_avatar.webp" 
+              alt="Avatar" 
+              className="w-10 h-10 rounded-full object-cover shadow border border-rose-200"
+              onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=300&h=300"; }}
+            />
+          <div
+            className={`p-4 rounded-2xl rounded-tl-sm shadow-sm space-y-2 flex-1 ${
+              riskDetected
+                ? "bg-red-50 border border-red-200 text-red-900"
+                : "bg-rose-50 border border-rose-100 text-gray-800"
+            }`}
+          >
+            {riskDetected && <RiskBadge level="high" />}
+            <p className="font-semibold text-[15px] leading-relaxed">
+              {reply}
+            </p>
+            <div className="flex gap-2 pt-2 border-t border-rose-200/50">
               <button
                 type="button"
-                onClick={saveLog}
-                className="flex-1 bg-rose-500 text-white font-bold py-2 rounded-xl"
+                onClick={() => speak(reply)}
+                className="flex items-center justify-center gap-1 flex-1 bg-white text-rose-700 font-bold py-2 rounded-xl text-sm shadow-sm hover:bg-rose-50"
               >
-                💾 {saveLabel}
+                🔊 Listen Again
               </button>
-            ) : (
-              <span className="flex-1 bg-green-100 text-green-700 font-bold py-2 rounded-xl text-center">
-                ✅ {savedLabel}
-              </span>
-            )}
+            </div>
           </div>
         </div>
       )}

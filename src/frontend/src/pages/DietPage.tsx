@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLang } from "../context/LangContext";
 import { dietPlan } from "../data/dietData";
 import { exercisePlan } from "../data/exerciseData";
@@ -76,7 +76,26 @@ export default function DietPage() {
   const [trimester, setTrimester] = useState<1 | 2 | 3>(info?.trimester ?? 1);
   const [tab, setTab] = useState<"diet" | "exercise">("diet");
   const [videoIdx, setVideoIdx] = useState(0);
+  const [aiDiet, setAiDiet] = useState<any>(null);
+  const [loadingDiet, setLoadingDiet] = useState(false);
   const { t } = useLang();
+
+  // For demonstration, hardcode a mock patient ID
+  const MOCK_PATIENT_ID = "000000000000000000000000";
+
+  async function generateAIDiet() {
+    setLoadingDiet(true);
+    try {
+      const res = await fetch(`http://localhost:5001/api/diet/${MOCK_PATIENT_ID}`);
+      const data = await res.json();
+      if (data.breakfast) setAiDiet(data);
+    } catch (e) {
+      console.error(e);
+      alert("Error generating AI diet plan.");
+    } finally {
+      setLoadingDiet(false);
+    }
+  }
 
   const diet = dietPlan[trimester];
   const ex = exercisePlan[trimester];
@@ -146,10 +165,44 @@ export default function DietPage() {
 
       {tab === "diet" ? (
         <>
-          <div
-            className="rounded-2xl p-4 border border-amber-200"
-            style={{ background: "oklch(0.97 0.04 80)" }}
-          >
+          <div className="flex justify-end mb-2">
+            <button 
+              onClick={generateAIDiet}
+              disabled={loadingDiet}
+              className="bg-green-100 text-green-700 font-bold px-4 py-2 rounded-xl text-sm"
+            >
+              {loadingDiet ? "Generating AI Diet..." : "✨ Get AI Personalized Diet"}
+            </button>
+          </div>
+
+          {aiDiet ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl p-4 border border-green-200 bg-green-50">
+                <p className="text-sm font-bold text-green-800 mb-1">💡 Daily AI Tip</p>
+                <p className="text-sm text-green-900">{aiDiet.tip}</p>
+              </div>
+              
+              <div className="bg-white rounded-2xl shadow-md p-4 border border-rose-100">
+                <h3 className="font-bold text-primary mb-2">🍳 Breakfast</h3>
+                <p className="text-sm text-gray-700">{aiDiet.breakfast}</p>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-md p-4 border border-rose-100">
+                <h3 className="font-bold text-primary mb-2">🍲 Lunch</h3>
+                <p className="text-sm text-gray-700">{aiDiet.lunch}</p>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-md p-4 border border-rose-100">
+                <h3 className="font-bold text-primary mb-2">🥗 Dinner</h3>
+                <p className="text-sm text-gray-700">{aiDiet.dinner}</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div
+                className="rounded-2xl p-4 border border-amber-200"
+                style={{ background: "oklch(0.97 0.04 80)" }}
+              >
             <p className="text-sm font-bold text-amber-800 mb-1">
               💡 Daily Tip / రోజువారీ చిట్కా
             </p>
@@ -196,6 +249,8 @@ export default function DietPage() {
             </div>
           </div>
         </>
+      )}
+      </>
       ) : (
         <>
           {/* Multi-video Player */}

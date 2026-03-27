@@ -31,7 +31,10 @@ export const store = {
   getPatient: () => get<PatientProfile>(KEYS.patient),
   savePatient: (p: PatientProfile) => set(KEYS.patient, p),
 
-  getSymptoms: () => get<SymptomLog[]>(KEYS.symptoms) ?? [],
+  getSymptoms: () => get<SymptomLog[]>(KEYS.symptoms) ?? [
+    { id: '1', timestamp: new Date(Date.now() - 86400000).toISOString(), symptoms: ['Mild Nausea', 'Fatigue'], riskLevel: 'low', aiSuggestion: 'Stay hydrated and rest. Try eating small, frequent meals.', voiceInputUsed: false, language: 'en' },
+    { id: '2', timestamp: new Date(Date.now() - 172800000).toISOString(), symptoms: ['Swelling in legs'], riskLevel: 'medium', aiSuggestion: 'Elevate your legs when sitting and avoid standing for long periods. If severe, consult your clinic.', voiceInputUsed: false, language: 'en' }
+  ],
   saveSymptoms: (s: SymptomLog[]) => set(KEYS.symptoms, s),
   addSymptom: (s: SymptomLog) => {
     const all = store.getSymptoms();
@@ -47,10 +50,16 @@ export const store = {
     store.saveAlerts(all);
   },
 
-  getASHA: () => get<ASHAWorker[]>(KEYS.asha) ?? [],
+  getASHA: () => get<ASHAWorker[]>(KEYS.asha) ?? [
+    { id: 'w1', name: 'Nurse Anjali', phone: '+91 9123456789', village: 'Mysuru North' },
+    { id: 'w2', name: 'Dr. Ramesh (Clinic)', phone: '+91 9988776655', village: 'Mysuru General' }
+  ],
   saveASHA: (a: ASHAWorker[]) => set(KEYS.asha, a),
 
-  getVisits: () => get<VisitRecord[]>(KEYS.visits) ?? [],
+  getVisits: () => get<VisitRecord[]>(KEYS.visits) ?? [
+    { id: 'v1', patientName: 'You (Routine Checkup)', ashaWorkerId: 'w1', scheduledDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0], notes: 'Bring ultrasound reports.', completed: false },
+    { id: 'v2', patientName: 'You (Vaccination)', ashaWorkerId: 'w2', scheduledDate: new Date(Date.now() - 86400000 * 5).toISOString().split('T')[0], notes: 'Tetanus shot administered.', completed: true }
+  ],
   saveVisits: (v: VisitRecord[]) => set(KEYS.visits, v),
 };
 
