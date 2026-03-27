@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Figtree";
+  src: url("/assets/fonts/Figtree.woff2") format("woff2");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.875rem;
+
+    /* Warm Rose/Pink OKLCH palette */
+    --background: 0.97 0.008 15;
+    --foreground: 0.22 0.025 15;
+    --card: 1 0 0;
+    --card-foreground: 0.22 0.025 15;
+    --popover: 1 0 0;
+    --popover-foreground: 0.22 0.025 15;
+
+    /* Primary: rich rose */
+    --primary: 0.52 0.2 15;
+    --primary-foreground: 0.99 0 0;
+
+    /* Secondary: soft blush */
+    --secondary: 0.93 0.04 15;
+    --secondary-foreground: 0.38 0.08 15;
+
+    --muted: 0.95 0.015 15;
+    --muted-foreground: 0.52 0.04 15;
+    --accent: 0.93 0.055 20;
+    --accent-foreground: 0.38 0.08 15;
+
+    --destructive: 0.55 0.23 25;
+    --destructive-foreground: 0.99 0 0;
+
+    --border: 0.9 0.03 15;
+    --input: 0.92 0.025 15;
+    --ring: 0.52 0.2 15;
+
+    --chart-1: 0.646 0.222 15;
+    --chart-2: 0.6 0.118 165;
+    --chart-3: 0.55 0.2 270;
+    --chart-4: 0.75 0.18 80;
+    --chart-5: 0.65 0.2 40;
+
+    --sidebar: 0.97 0.008 15;
+    --sidebar-foreground: 0.22 0.025 15;
+    --sidebar-primary: 0.52 0.2 15;
+    --sidebar-primary-foreground: 0.99 0 0;
+    --sidebar-accent: 0.93 0.04 15;
+    --sidebar-accent-foreground: 0.38 0.08 15;
+    --sidebar-border: 0.9 0.03 15;
+    --sidebar-ring: 0.52 0.2 15;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Figtree", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .gradient-hero {
+    background: linear-gradient(
+      135deg,
+      oklch(0.52 0.2 15),
+      oklch(0.62 0.18 340)
+    );
+  }
+  .gradient-card {
+    background: linear-gradient(
+      135deg,
+      oklch(0.96 0.03 15),
+      oklch(0.93 0.05 340)
+    );
+  }
+  .gradient-soft {
+    background: linear-gradient(
+      135deg,
+      oklch(0.97 0.015 15),
+      oklch(0.95 0.025 340)
+    );
+  }
+  .text-gradient {
+    background: linear-gradient(
+      135deg,
+      oklch(0.45 0.2 15),
+      oklch(0.55 0.18 340)
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .card-elevated {
+    @apply bg-card rounded-2xl shadow-lg border border-border;
+  }
+  .btn-primary {
+    @apply bg-primary text-primary-foreground font-bold py-4 rounded-2xl transition-all active:scale-95 shadow-md;
+  }
+  .btn-rose-gradient {
+    background: linear-gradient(
+      135deg,
+      oklch(0.52 0.2 15),
+      oklch(0.58 0.22 340)
+    );
+    @apply text-primary-foreground font-bold py-4 rounded-2xl transition-all active:scale-95 shadow-lg;
+  }
+}
